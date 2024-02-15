@@ -1,44 +1,28 @@
-use poem::{get, handler, listener::TcpListener, web::Json, web::Path, Route, Server};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use dotenv::dotenv;
-use sqlx::postgres::PgPoolOptions;
+use poem::{get, handler, listener::TcpListener, web::Data, web::Path, EndpointExt, Route, Server};
+use serde::{Deserialize, Serialize};
+use sqlx::postgres::{PgPoolOptions, Postgres};
+use sqlx::Pool;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct Movie {
-    id: Uuid,
-    title: String,
-    director: String,
-    year: i32,
-    ratings: Vec<Rating>,
-}
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct Rating {
-    id: Uuid,
-    movie: Movie,
-    score: i32,
-    out_of: i32,
-    unit: Unit,
-    user: User,
-}
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct User {
-    id: Uuid,
-    name: String,
-}
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct Unit {
-    id: Uuid,
-    name: String,
+mod movies;
+
+// Review handlers
+// fn get_review(){}
+// fn get_all_reviews_for_movie(Path(movie_id): Path<i32>, data:Data<&Pool<Postgres>>)
+
+// Movie handlers
+#[handler]
+async fn get_movie(Path(id): Path<i32>, data: Data<&Pool<Postgres>>) -> String {
+    let pool: &Pool<Postgres> = data.0;
+    let movie = movies::from_id(id, pool).await;
+    return movies::movie_html(movie);
 }
 
 #[handler]
-fn get_movie(Path(id): Path<String>) {
-    // -> Json<Movie> {
-}
+async fn get_all_movies() {}
 
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+async fn main() {
     dotenv().unwrap();
     let database_url = dotenv::var("DATABASE_URL").unwrap();
     let pool = PgPoolOptions::new()
@@ -47,21 +31,11 @@ async fn main() -> Result<(), std::io::Error> {
         .await
         .unwrap();
 
-    let movie = sqlx::query!(
-        r#"
-            INSERT INTO movies (title, director, year )
-            VALUES ( $1, $2, $3 )
-            RETURNING *
-        "#,
-        "Past Lives", "Celine Song", 2023
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    println!("{:?}", movie);
+    let app = Route::new()
+        // .at("/reviews/:movie_id", get(get_all_reviews_for_movie))
+        .at("/movie/:title", get(get_movie))
+        .at("/movies", get(get_all_movies))
+        .data(pool);
 
-    let app = Route::new().at("/movie/:title", get(get_movie));
-    Server::new(TcpListener::bind("0.0.0.0:3000"))
-        .run(app)
-        .await
+    Server::new(TcpListener::bind("0.0.0.0:300")).run(app).await;
 }
