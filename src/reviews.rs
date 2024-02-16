@@ -1,7 +1,8 @@
-use askama::Template;
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
-use sql::{postgres::Postgres, Pool};
+use sqlx::{postgres::Postgres, Pool};
+use sqlx::types::BigDecimal;
+use maud::{html, Markup};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Review {
@@ -10,18 +11,25 @@ pub struct Review {
     pub author: String,
     pub copy: String,
     pub created_at: DateTime<Local>,
-    pub score: Option<i32>,
-    pub out_of: i32,
-    pub unit: String,
+    pub score: Option<BigDecimal>,
+    pub out_of: Option<BigDecimal>,
+    pub unit: Option<String>,
 }
 
-#[derive(Template)]
-#[template(path = "Review.html")]
-struct reviewTemplate<'a> {
-    copy: &'a String,
-    author: &'a String,
+pub async fn from_id(review_id: i32, pool: &Pool<Postgres>) -> Review {
+    return sqlx::query_as!(
+        Review,
+        r#"
+            SELECT * FROM reviews
+            WHERE id=$1
+        "#,
+        review_id
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
 }
-pub async fn for_movie(movie_id: i32, pool: &Pool<Postgres>) -> Review {
+pub async fn for_movie(movie_id: i32, pool: &Pool<Postgres>) -> Vec<Review> {
     return sqlx::query_as!(
         Review,
         r#"
@@ -30,27 +38,40 @@ pub async fn for_movie(movie_id: i32, pool: &Pool<Postgres>) -> Review {
         "#,
         movie_id
     )
-    .fetch_one(pool)
+    .fetch_all(pool)
     .await
     .unwrap();
 }
 
-pub async fn all(pool: &Pool<Postgres>) -> vec<Review> {
-    return sqlx::query_as!(Review, r#""#)
+pub async fn all(pool: &Pool<Postgres>) -> Vec<Review> {
+    return sqlx::query_as!(Review, r#"
+    SELECT * FROM reviews
+                           "#)
         .fetch_all(pool)
         .await
         .unwrap();
 }
 
-pub fn movie_html(info: Movie) -> String {
-    let template = ReviewTemplate {
-        title: &info.title,
-        director: &info.director.unwrap_or(String::from("")),
-    };
-    return template.render().unwrap();
+pub fn review_html(info: Review) -> Markup {
+    html! {
+       ."review-card" {
+           ."review-copy" { (info.copy) }
+           ."review-author" { (info.author) }
+       }
+    }
 }
-pub fn list_html(reviews: Vec<Review>) -> String {
-    let review_elems = movies.into_iter().map(movie_html).collect::<Vec<String>>();
-    let reviews_elem = movie_elems.join("");
-    return format!("<ul class='review-list'>{}</ul>", reviews_elem);
+pub fn list_html(reviews: Vec<Review>) -> Markup {
+    html! {
+        @if !reviews.is_empty() {
+            ul ."reviews-list" {
+                @for review in reviews {
+                    li ."review-list-item" {
+                        (review_html(review))
+                    }
+                }            
+            }
+        } @else {
+            "No reviews yet, please add your thoughts!"
+        }
+    }
 }

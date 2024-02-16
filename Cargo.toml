@@ -7,13 +7,16 @@ edition = "2021"
 
 [dependencies]
 tokio = {version = "1.36.0", features = ["full"]}
-sqlx = { version = "0.7", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "chrono" ]}
-poem = "2.0.0"
+sqlx = { version = "0.7", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "chrono", "bigdecimal"]}
+poem = { version = "2.0.0", features = ["multipart"]}
 uuid = { version = "1.7.0", features = ["v4", "fast-rng", "serde"]}
 serde = "1.0.196"
 rustls = "0.22.2"
 dotenv = "0.15.0"
 askama = { version = "0.12.1", features = ["serde"] }
+
 chrono = { version = "0.4.34", features = ["serde"]}
+bigdecimal = { version = "0.3", features = ["serde"]}
+maud = "0.26.0"
 
 

@@ -1,4 +1,4 @@
-use askama::Template;
+use maud::{html, Markup};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::Postgres;
 use sqlx::Pool;
@@ -9,13 +9,6 @@ pub(crate) struct Movie {
     pub title: String,
     pub director: Option<String>,
     pub year: i32,
-}
-
-#[derive(Template)]
-#[template(path = "Movie.html")]
-struct MovieTemplate<'a> {
-    title: &'a String,
-    director: &'a String,
 }
 
 pub async fn from_id(id: i32, pool: &Pool<Postgres>) -> Movie {
@@ -45,15 +38,30 @@ pub async fn all(pool: &Pool<Postgres>) -> Vec<Movie> {
     .unwrap();
 }
 
-pub fn movie_html(info: Movie) -> String {
-    let template = MovieTemplate {
-        title: &info.title,
-        director: &info.director.unwrap_or(String::from("")),
-    };
-    return template.render().unwrap();
+pub fn movie_html(info: Movie) -> Markup {
+    html! {
+        ."movie-card" {
+            ."hero" . "is-info" {
+                h1  ."title" { (info.title) }
+                @if info.director.is_some() {
+                    h2 ."movie-director" ."subtitle" { (info.director.unwrap()) }
+                }
+            }
+        }
+    }
 }
-pub fn list_html(movies: Vec<Movie>) -> String {
-    let movie_elems = movies.into_iter().map(movie_html).collect::<Vec<String>>();
-    let movies_elem = movie_elems.join("");
-    return format!("<ul class='movie-list'>{}</ul>", movies_elem);
+pub fn list_html(movies: Vec<Movie>) -> Markup {
+    html! {
+        @if !movies.is_empty() {
+            ul ."movie-list" {
+                @for movie in movies {
+                    li ."movie-list-item" {
+                        (movie_html(movie))
+                    }
+                }
+            }
+        } @else {
+            "No movies reviewed yet, please change that."
+        }
+    }
 }
