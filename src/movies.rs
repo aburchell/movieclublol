@@ -64,19 +64,12 @@ pub async fn movie_html(info: Movie, pool: &Pool<Postgres>) -> Markup {
                     h2 ."movie-director" ."subtitle" { (info.director.unwrap()) }
                 }
             }
-            @if !reviews.is_empty() {
-                ul ."review-list" {
-                    @for review in reviews {
-                        li ."review-item" {
-                            (crate::reviews::review_html(review))
-                        }
-                    }
-                }
-            }
+            (crate::reviews::list_html(reviews))
         }
     }
 }
-pub async fn list_html(movies: Vec<Movie>, pool: &Pool<Postgres>) -> Markup {
+pub async fn list_html(mut movies: Vec<Movie>, pool: &Pool<Postgres>) -> Markup {
+    movies.reverse();
     html! {
         @if !movies.is_empty() {
             ul ."movie-list" {

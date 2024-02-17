@@ -98,8 +98,10 @@ async fn index(data: Data<&Pool<Postgres>>) -> Response {
     let markup = html! {
         (header)
         body {
-            (movies)
-            (add_panel)
+            ."container" style="display:flex; flex-direction:column"{
+                (movies)
+                (add_panel)
+            }
         }
     };
     let home_html = markup.into_string();

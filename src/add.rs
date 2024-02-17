@@ -1,10 +1,25 @@
 use crate::movies;
+use crate::reviews;
 use maud::{html, Markup};
 use sqlx::{Pool, Postgres};
 
+async fn review_is_unique(movie_id: i32, author: String, copy: String, pool: &Pool<Postgres>) -> bool {
+    let identical:Option<reviews::Review> = sqlx::query_as!(
+        reviews::Review, r#"
+        SELECT * FROM reviews
+        WHERE movie_id=$1 AND author=$2 AND copy=$3"#, movie_id, author, copy
+        ).fetch_optional(pool).await.unwrap();
+    match identical {
+        Some(_) => false,
+        None => true,
+    }
+}
 pub async fn review(movie_id: i32, author: String, copy: String, pool: &Pool<Postgres>) {
+    let a = author.clone();
+    let c = copy.clone();
+    if !review_is_unique(movie_id, a, c, pool).await {return};
     sqlx::query_as!(
-        crate::reviews::Review,
+        reviews::Review,
         r#"
         INSERT INTO reviews (movie_id, author, copy)
         VALUES ($1, $2, $3)
@@ -79,42 +94,46 @@ pub async fn movie(title: String, director: Option<String>, year: i32, pool: &Po
 pub fn panel_html() -> Markup {
     html! {
         iframe name="hacky" style="display:none;" {}
-        form ."add-panel" ."box" name="addReviewForm" method="POST" action="/addReview" style="position: fixed; bottom: 10px; padding: 1em; margin: 1em;" target="hacky"{
+        form ."add-panel" ."box" name="addReviewForm" method="POST" action="/addReview" style="width: 85vw; max-height:35vh; padding: 1em; margin: 1em;" target="hacky"{
             h2 {"Review a film!"}
-            ."field" {
-                label ."label" { "Title" }
-                ."control" {
-                    input ."input" type="text" name="title" autocomplete="off" required {}
+            ."columns" {
+                ."field" ."column" {
+                    label ."label" { "Title" }
+                    ."control" {
+                        input ."input" type="text" name="title" autocomplete="off" required {}
+                    }
+                }
+                ."field" ."column" {
+                    label ."label" { "Year" }
+                    ."control" {
+                        input ."input" type="number" name="year"  autocomplete="off" required {}
+                    }
+                }
+                ."field" ."column" {
+                    label ."label" { "Director" }
+                    ."control" {
+                        input ."input" type="text" name="director" autocomplete="off"{}
+                    }
                 }
             }
-            ."field" {
-                label ."label" { "Year" }
-                ."control" {
-                    input ."input" type="number" name="year"  autocomplete="off" required {}
+            ."columns"{
+                ."field" ."column" ."is-three-quarters"{
+                    label ."label" { "Thoughts?" }
+                    ."control" {
+                        input ."input" type="text" name="copy" autocomplete="off" required {}
+                    }
                 }
-            }
-            ."field" {
-                label ."label" { "Director" }
-                ."control" {
-                    input ."input" type="text" name="director" autocomplete="off"{}
-                }
-            }
-            ."field" {
-                label ."label" { "Thoughts?" }
-                ."control" {
-                    input ."input" type="text" name="copy" autocomplete="off" required {}
-                }
-            }
-            ."field" {
-                label ."label" { "Sincerely,"}
-                ."control" {
-                    input ."input" type="text" name="author" autocomplete="off" required {}
-                }
+                ."field" ."column"{
+                    label ."label" { "Sincerely,"}
+                    ."control" {
+                        input ."input" type="text" name="author" autocomplete="off" required {}
+                    }
 
+                }
             }
             ."field" {
                 ."control" {
-                    button ."button" ."is-link" onclick="document.addReviewForm.submit(); setTimeout(() => document.addReviewForm.reset(), 10); console.log('Reset!')" { "Submit" }
+                    button ."button" ."is-link" onclick="setTimeout(() => document.addReviewForm.reset(), 10); console.log('Reset!')" { "Submit" }
                 }
             }
         }
