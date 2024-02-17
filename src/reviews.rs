@@ -1,8 +1,8 @@
 use chrono::{DateTime, Local};
-use serde::{Deserialize, Serialize};
-use sqlx::{postgres::Postgres, Pool};
-use sqlx::types::BigDecimal;
 use maud::{html, Markup};
+use serde::{Deserialize, Serialize};
+use sqlx::types::BigDecimal;
+use sqlx::{postgres::Postgres, Pool};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Review {
@@ -40,16 +40,7 @@ pub async fn for_movie(movie_id: i32, pool: &Pool<Postgres>) -> Vec<Review> {
     )
     .fetch_all(pool)
     .await
-    .unwrap();
-}
-
-pub async fn all(pool: &Pool<Postgres>) -> Vec<Review> {
-    return sqlx::query_as!(Review, r#"
-    SELECT * FROM reviews
-                           "#)
-        .fetch_all(pool)
-        .await
-        .unwrap();
+    .unwrap_or(vec![]);
 }
 
 pub fn review_html(info: Review) -> Markup {
@@ -68,7 +59,7 @@ pub fn list_html(reviews: Vec<Review>) -> Markup {
                     li ."review-list-item" {
                         (review_html(review))
                     }
-                }            
+                }
             }
         } @else {
             "No reviews yet, please add your thoughts!"
